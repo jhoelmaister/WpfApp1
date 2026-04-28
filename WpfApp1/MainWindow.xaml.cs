@@ -10,12 +10,10 @@ namespace WpfApp1
     public class Articulo
     {
         public int Id { get; set; }
-        public int peped { get; set; }
         public string Nombre { get; set; }
         public string Categoria { get; set; }
         public decimal Precio { get; set; }
         public bool Activo { get; set; }
-
         public string PrecioFormateado => Precio.ToString("F2");
         public string Estado => Activo ? "Activo" : "Inactivo";
     }
@@ -31,7 +29,6 @@ namespace WpfApp1
         {
             InitializeComponent();
             DgArticulos.ItemsSource = _vista;
-            // Datos de wqdqw
             // Datos de ejemplo
             AgregarEjemplo("Laptop HP 15\"", "Electrónica", 4500);
             AgregarEjemplo("Silla ergonómica", "Mobiliario", 850);
