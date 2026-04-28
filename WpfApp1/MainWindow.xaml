@@ -1,12 +1,152 @@
 ﻿<Window x:Class="WpfApp1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WpfApp1"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        Title="Gestión de Artículos" Height="600" Width="850"
+        WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Título -->
+        <TextBlock Grid.Row="0" Text="Gestión de Artículos"
+                   FontSize="22" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <!-- Formulario -->
+        <Border Grid.Row="1" Background="#F5F5F5" CornerRadius="6"
+                Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Nombre" FontSize="11" Foreground="Gray" Margin="0,0,8,2"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="Categoría" FontSize="11" Foreground="Gray" Margin="0,0,8,2"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Precio (Bs.)" FontSize="11" Foreground="Gray" Margin="0,0,8,2"/>
+
+                <TextBox Grid.Row="1" Grid.Column="0" x:Name="TxtNombre" Margin="0,0,8,0"/>
+                <TextBox Grid.Row="1" Grid.Column="1" x:Name="TxtCategoria" Margin="0,0,8,0"/>
+                <TextBox Grid.Row="1" Grid.Column="2" x:Name="TxtPrecio" Margin="0,0,8,0"/>
+
+                <Button Grid.Row="1" Grid.Column="3" Content="➕ Agregar"
+                        Background="#2E7D32" Foreground="White"
+                        Click="BtnAgregar_Click" Margin="0,0,8,0"/>
+                <Button Grid.Row="1" Grid.Column="4" Content="✏️ Guardar cambios"
+                        Background="#1565C0" Foreground="White"
+                        x:Name="BtnGuardar"
+                        Click="BtnGuardar_Click" IsEnabled="False"/>
+            </Grid>
+        </Border>
+
+        <!-- Buscador -->
+        <Grid Grid.Row="2" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtBuscar" Grid.Column="0"
+                     Text="" Margin="0,0,8,0"
+                     TextChanged="TxtBuscar_TextChanged">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Padding" Value="6,4"/>
+                        <Setter Property="FontSize" Value="13"/>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+            <TextBlock Grid.Column="0" Text="🔍 Buscar por nombre o categoría..."
+                       IsHitTestVisible="False" Foreground="Gray"
+                       VerticalAlignment="Center" Margin="10,0,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=TxtBuscar}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Button Grid.Column="1" Content="Limpiar" Click="BtnLimpiar_Click"/>
+        </Grid>
+
+        <!-- Tabla -->
+        <DataGrid Grid.Row="3"
+                  x:Name="DgArticulos"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column"
+                  CanUserResizeRows="False"
+                  AlternatingRowBackground="#FAFAFA"
+                  SelectionChanged="DgArticulos_SelectionChanged"
+                  FontSize="13">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Nombre" Binding="{Binding Nombre}" Width="*"/>
+                <DataGridTextColumn Header="Categoría" Binding="{Binding Categoria}" Width="150"/>
+                <DataGridTextColumn Header="Precio (Bs.)" Binding="{Binding PrecioFormateado}" Width="120"/>
+                <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" Width="90"/>
+                <DataGridTemplateColumn Header="Acciones" Width="200">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Button Content="✏️ Editar"
+                                        Background="#1565C0" Foreground="White"
+                                        Padding="8,4" FontSize="12" Margin="0,0,4,0"
+                                        Click="BtnEditar_Click" Tag="{Binding Id}"/>
+                                <Button Content="🗑️ Borrar"
+                                        Background="#C62828" Foreground="White"
+                                        Padding="8,4" FontSize="12"
+                                        Click="BtnBorrar_Click" Tag="{Binding Id}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Pie -->
+        <Border Grid.Row="4" Background="#EEEEEE" CornerRadius="4"
+                Padding="12,8" Margin="0,10,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" x:Name="TxtTotal" Text="Total: 0 artículos" FontSize="13"/>
+                <TextBlock Grid.Column="1" x:Name="TxtPromedio" Text="Promedio: Bs. 0.00"
+                           HorizontalAlignment="Center" FontSize="13"/>
+                <TextBlock Grid.Column="2" x:Name="TxtValorTotal" Text="Valor total: Bs. 0.00"
+                           HorizontalAlignment="Right" FontSize="13"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
