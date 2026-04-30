@@ -1,158 +1,251 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.Data.SqlClient;
 
 namespace WpfApp1
 {
     public class Articulo
     {
-        public int Id { get; set; }
-        public string Nombre { get; set; }
-        public string Categoria { get; set; }
-        public decimal Precio { get; set; }
-        public bool Activo { get; set; }
-        public string PrecioFormateado => Precio.ToString("F2");
-        public string Estado => Activo ? "Activo" : "Inactivo";
+        public double Id { get; set; }
+        public string Codigo { get; set; }
+        public string Descripcion { get; set; }
+        public string Modelo { get; set; }
+        public string Estado { get; set; }
+        public string Estadof { get; set; }
+        public double Categoria { get; set; }
+        public double Familia { get; set; }
+        public double Industria { get; set; }
+        public DateTime? Emision { get; set; }
+        public DateTime? Edicion { get; set; }
     }
 
     public partial class MainWindow : Window
     {
-        private List<Articulo> _articulos = new List<Articulo>();
+        // ════════════════════════════════════════════════════════
+        //  Conexión → Servidor: MAISTER  |  Base: edberBase7
+        // ════════════════════════════════════════════════════════
+        private const string ConnectionString =
+        //    "Server=MAISTER;" +
+        //    "Database=edberBase7;" +
+        //    "Integrated Security=True;" +
+        //    "TrustServerCertificate=True;";
+        // ¿Usas usuario/contraseña en vez de Windows Auth? Cambia a:
+         "Server=MAISTER;Database=edberBase7;User Id=sa;Password=papa1122;TrustServerCertificate=True;";
+        // ═══════════════════════════════════════════════════════
         private ObservableCollection<Articulo> _vista = new ObservableCollection<Articulo>();
-        private int _nextId = 1;
-        private int _editandoId = -1;
+        private double _editandoId = -1;
 
         public MainWindow()
         {
             InitializeComponent();
             DgArticulos.ItemsSource = _vista;
-            // Datos de ejemplo
-            AgregarEjemplo("Laptop HP 15\"", "Electrónica", 4500);
-            AgregarEjemplo("Silla ergonómica", "Mobiliario", 850);
-            AgregarEjemplo("Mouse inalámbrico", "Electrónica", 120);
+            CargarArticulos();
         }
 
-        private void AgregarEjemplo(string nombre, string categoria, decimal precio)
+        // ── CARGAR DESDE SQL SERVER ───────────────────────────
+        private void CargarArticulos()
         {
-            _articulos.Add(new Articulo
+            try
             {
-                Id = _nextId++,
-                Nombre = nombre,
-                Categoria = categoria,
-                Precio = precio,
-                Activo = true
-            });
-            Actualizar();
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+
+                var busqueda = TxtBuscar?.Text?.ToLower() ?? "";
+
+                string sql = @"
+                    SELECT id, codigo, descripcion, modelo,
+                           estado, estadof, categoria, familia, industria,
+                           emision, edicion
+                    FROM   dbo.articulos
+                    WHERE  LOWER(ISNULL(descripcion,'')) LIKE @b
+                        OR LOWER(ISNULL(codigo,''))      LIKE @b
+                        OR LOWER(ISNULL(modelo,''))      LIKE @b
+                    ORDER  BY descripcion";
+
+                using var cmd = new SqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@b", $"%{busqueda}%");
+
+                _vista.Clear();
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    _vista.Add(new Articulo
+                    {
+                        Id = r.IsDBNull(0) ? 0 : r.GetDouble(0),
+                        Codigo = r.IsDBNull(1) ? "" : r.GetString(1),
+                        Descripcion = r.IsDBNull(2) ? "" : r.GetString(2),
+                        Modelo = r.IsDBNull(3) ? "" : r.GetString(3),
+                        Estado = r.IsDBNull(4) ? "" : r.GetString(4),
+                        Estadof = r.IsDBNull(5) ? "" : r.GetString(5),
+                        Categoria = r.IsDBNull(6) ? 0 : r.GetDouble(6),
+                        Familia = r.IsDBNull(7) ? 0 : r.GetDouble(7),
+                        Industria = r.IsDBNull(8) ? 0 : r.GetDouble(8),
+                        Emision = r.IsDBNull(9) ? null : r.GetDateTime(9),
+                        Edicion = r.IsDBNull(10) ? null : r.GetDateTime(10),
+                    });
+                }
+
+                TxtTotal.Text = $"Total: {_vista.Count} artículos";
+                TxtPromedio.Text = "";
+                TxtValorTotal.Text = "";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al conectar con SQL Server:\n{ex.Message}",
+                    "Error de conexión", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        // ── AGREGAR ──────────────────────────────────────────────
+        // ── AGREGAR ───────────────────────────────────────────
         private void BtnAgregar_Click(object sender, RoutedEventArgs e)
         {
-            if (!ValidarCampos(out string nombre, out string cat, out decimal precio)) return;
+            string descripcion = TxtNombre.Text.Trim();
+            string codigo = TxtCategoria.Text.Trim();
+            string modelo = TxtPrecio.Text.Trim();
 
-            _articulos.Add(new Articulo
+            if (string.IsNullOrEmpty(descripcion))
             {
-                Id = _nextId++,
-                Nombre = nombre,
-                Categoria = cat,
-                Precio = precio,
-                Activo = true
-            });
+                MessageBox.Show("Ingresa la descripción.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                TxtNombre.Focus(); return;
+            }
+
+            try
+            {
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+
+                // Calcular nuevo ID
+                double nuevoId;
+                using (var cmdMax = new SqlCommand("SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.articulos", conn))
+                    nuevoId = Convert.ToDouble(cmdMax.ExecuteScalar());
+
+                using var cmd = new SqlCommand(@"
+                    INSERT INTO dbo.articulos (id, descripcion, codigo, modelo, estado, emision)
+                    VALUES (@id, @desc, @cod, @mod, 'A', GETDATE())", conn);
+                cmd.Parameters.AddWithValue("@id", nuevoId);
+                cmd.Parameters.AddWithValue("@desc", descripcion);
+                cmd.Parameters.AddWithValue("@cod", codigo);
+                cmd.Parameters.AddWithValue("@mod", modelo);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al agregar:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             LimpiarFormulario();
-            Actualizar();
+            CargarArticulos();
             MessageBox.Show("Artículo agregado correctamente.", "Éxito",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        // ── EDITAR (cargar en formulario) ─────────────────────────
+        // ── EDITAR (cargar en formulario) ─────────────────────
         private void BtnEditar_Click(object sender, RoutedEventArgs e)
         {
-            var id = (int)((Button)sender).Tag;
-            var art = _articulos.FirstOrDefault(a => a.Id == id);
+            var id = Convert.ToDouble(((Button)sender).Tag);
+            var art = _vista.FirstOrDefault(a => a.Id == id);
             if (art == null) return;
 
             _editandoId = id;
-            TxtNombre.Text = art.Nombre;
-            TxtCategoria.Text = art.Categoria;
-            TxtPrecio.Text = art.Precio.ToString("F2");
-
+            TxtNombre.Text = art.Descripcion;
+            TxtCategoria.Text = art.Codigo;
+            TxtPrecio.Text = art.Modelo;
             BtnGuardar.IsEnabled = true;
             TxtNombre.Focus();
         }
 
-        // ── GUARDAR CAMBIOS ───────────────────────────────────────
+        // ── GUARDAR CAMBIOS ───────────────────────────────────
         private void BtnGuardar_Click(object sender, RoutedEventArgs e)
         {
             if (_editandoId < 0) return;
-            if (!ValidarCampos(out string nombre, out string cat, out decimal precio)) return;
 
-            var art = _articulos.FirstOrDefault(a => a.Id == _editandoId);
-            if (art == null) return;
+            string descripcion = TxtNombre.Text.Trim();
+            string codigo = TxtCategoria.Text.Trim();
+            string modelo = TxtPrecio.Text.Trim();
 
-            art.Nombre = nombre;
-            art.Categoria = cat;
-            art.Precio = precio;
+            if (string.IsNullOrEmpty(descripcion))
+            {
+                MessageBox.Show("Ingresa la descripción.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                TxtNombre.Focus(); return;
+            }
+
+            try
+            {
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+                using var cmd = new SqlCommand(@"
+                    UPDATE dbo.articulos
+                    SET descripcion = @desc,
+                        codigo      = @cod,
+                        modelo      = @mod,
+                        edicion     = GETDATE()
+                    WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@desc", descripcion);
+                cmd.Parameters.AddWithValue("@cod", codigo);
+                cmd.Parameters.AddWithValue("@mod", modelo);
+                cmd.Parameters.AddWithValue("@id", _editandoId);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al actualizar:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             LimpiarFormulario();
-            Actualizar();
+            CargarArticulos();
             MessageBox.Show("Artículo actualizado correctamente.", "Éxito",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        // ── BORRAR ────────────────────────────────────────────────
+        // ── BORRAR ────────────────────────────────────────────
         private void BtnBorrar_Click(object sender, RoutedEventArgs e)
         {
-            var id = (int)((Button)sender).Tag;
-            var art = _articulos.FirstOrDefault(a => a.Id == id);
+            var id = Convert.ToDouble(((Button)sender).Tag);
+            var art = _vista.FirstOrDefault(a => a.Id == id);
             if (art == null) return;
 
-            var res = MessageBox.Show($"¿Eliminar \"{art.Nombre}\"?", "Confirmar",
+            var res = MessageBox.Show($"¿Eliminar \"{art.Descripcion}\"?", "Confirmar",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (res != MessageBoxResult.Yes) return;
 
-            _articulos.Remove(art);
+            try
+            {
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+                using var cmd = new SqlCommand("DELETE FROM dbo.articulos WHERE id = @id", conn);
+                cmd.Parameters.AddWithValue("@id", id);
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al eliminar:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             if (_editandoId == id) LimpiarFormulario();
-            Actualizar();
+            CargarArticulos();
         }
 
-        // ── BUSCAR ────────────────────────────────────────────────
-        private void TxtBuscar_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            Actualizar();
-        }
-
-        private void BtnLimpiar_Click(object sender, RoutedEventArgs e)
-        {
-            TxtBuscar.Text = "";
-        }
-
+        // ── BUSCAR ────────────────────────────────────────────
+        private void TxtBuscar_TextChanged(object sender, TextChangedEventArgs e) => CargarArticulos();
+        private void BtnLimpiar_Click(object sender, RoutedEventArgs e) => TxtBuscar.Text = "";
         private void DgArticulos_SelectionChanged(object sender, SelectionChangedEventArgs e) { }
 
-        // ── HELPERS ───────────────────────────────────────────────
+        // ── HELPERS ───────────────────────────────────────────
         private bool ValidarCampos(out string nombre, out string categoria, out decimal precio)
         {
             nombre = TxtNombre.Text.Trim();
             categoria = TxtCategoria.Text.Trim();
             precio = 0;
-
             if (string.IsNullOrEmpty(nombre))
             {
-                MessageBox.Show("Ingresa el nombre del artículo.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Ingresa la descripción.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 TxtNombre.Focus(); return false;
-            }
-            if (string.IsNullOrEmpty(categoria))
-            {
-                MessageBox.Show("Ingresa la categoría.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                TxtCategoria.Focus(); return false;
-            }
-            if (!decimal.TryParse(TxtPrecio.Text.Trim(), out precio) || precio < 0)
-            {
-                MessageBox.Show("Ingresa un precio válido.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                TxtPrecio.Focus(); return false;
             }
             return true;
         }
@@ -164,26 +257,6 @@ namespace WpfApp1
             TxtPrecio.Text = "";
             BtnGuardar.IsEnabled = false;
             _editandoId = -1;
-        }
-
-        private void Actualizar()
-        {
-            var q = TxtBuscar?.Text?.ToLower() ?? "";
-            var filtrados = _articulos
-                .Where(a => a.Nombre.ToLower().Contains(q) || a.Categoria.ToLower().Contains(q))
-                .ToList();
-
-            _vista.Clear();
-            foreach (var a in filtrados) _vista.Add(a);
-
-            // Estadísticas
-            int total = _articulos.Count;
-            decimal valorTotal = _articulos.Sum(a => a.Precio);
-            decimal promedio = total > 0 ? valorTotal / total : 0;
-
-            TxtTotal.Text = $"Total: {total} artículos";
-            TxtPromedio.Text = $"Promedio: Bs. {promedio:F2}";
-            TxtValorTotal.Text = $"Valor total: Bs. {valorTotal:F2}";
         }
     }
 }
