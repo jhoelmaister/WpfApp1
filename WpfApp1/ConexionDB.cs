@@ -1,5 +1,6 @@
-﻿using System.Data;
-using Microsoft.Data.SqlClient;
+﻿ using System.Data;
+ using Microsoft.Data.SqlClient;
+
 
 public static class ConexionDB
 {
