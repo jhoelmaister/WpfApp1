@@ -12,11 +12,11 @@ namespace WpfApp1
     public class Articulo
     {
         public double Id { get; set; }
-        public string Codigo { get; set; }
-        public string Descripcion { get; set; }
-        public string Modelo { get; set; }
-        public string Estado { get; set; }
-        public string Estadof { get; set; }
+        public string? Codigo { get; set; }
+        public string? Descripcion { get; set; }
+        public string? Modelo { get; set; }
+        public string? Estado { get; set; }
+        public string? Estadof { get; set; }
         public double Categoria { get; set; }
         public double Familia { get; set; }
         public double Industria { get; set; }

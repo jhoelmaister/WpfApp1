@@ -38,10 +38,6 @@ namespace TuProyecto.Data
         // ─── Traspasos / retornos ────────────────────────────────────────────
         public DataConsulta DocumentosTObj  { get; } = new();
         public DataConsulta TraspasosObj    { get; } = new();
-        public DataConsulta RetornosObj     { get; } = new();
-
-        // ─── Otros ───────────────────────────────────────────────────────────
-        public DataConsulta DocumentosRObj  { get; } = new();
 
         private SqlData() { } // constructor privado → usar Instance
     }
