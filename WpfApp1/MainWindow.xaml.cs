@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -24,17 +25,7 @@ namespace WpfApp1
 
     public partial class MainWindow : Window
     {
-        // ════════════════════════════════════════════════════════
-        //  Conexión → Servidor: MAISTER  |  Base: edberBase7
-        // ════════════════════════════════════════════════════════
-        private const string ConnectionString =
-        //    "Server=MAISTER;" +
-        //    "Database=edberBase7;" +
-        //    "Integrated Security=True;" +
-        //    "TrustServerCertificate=True;";
-        // ¿Usas usuario/contraseña en vez de Windows Auth? Cambia a:
-         "Server=MAISTER;Database=edberBase7;User Id=sa;Password=papa1122;TrustServerCertificate=True;";
-        // ═══════════════════════════════════════════════════════
+        private SqlConnection? conexionGlobal;
         private ObservableCollection<Articulo> _vista = new ObservableCollection<Articulo>();
         private double _editandoId = -1;
 
@@ -43,6 +34,7 @@ namespace WpfApp1
             InitializeComponent();
             DgArticulos.ItemsSource = _vista;
             CargarArticulos();
+            this.Closed += MainWindow_Closed;
         }
 
         // ── CARGAR DESDE SQL SERVER ───────────────────────────
@@ -50,8 +42,10 @@ namespace WpfApp1
         {
             try
             {
-                using var conn = new SqlConnection(ConnectionString);
-                conn.Open();
+                if (conexionGlobal == null || conexionGlobal.State == ConnectionState.Closed)
+                {
+                    conexionGlobal = ConexionDB.AbrirConexion();
+                }
 
                 var busqueda = TxtBuscar?.Text?.ToLower() ?? "";
 
@@ -65,7 +59,7 @@ namespace WpfApp1
                         OR LOWER(ISNULL(modelo,''))      LIKE @b
                     ORDER  BY descripcion";
 
-                using var cmd = new SqlCommand(sql, conn);
+                using var cmd = new SqlCommand(sql, conexionGlobal);
                 cmd.Parameters.AddWithValue("@b", $"%{busqueda}%");
 
                 _vista.Clear();
@@ -114,17 +108,19 @@ namespace WpfApp1
 
             try
             {
-                using var conn = new SqlConnection(ConnectionString);
-                conn.Open();
+                if (conexionGlobal == null || conexionGlobal.State == ConnectionState.Closed)
+                {
+                    conexionGlobal = ConexionDB.AbrirConexion();
+                }
 
                 // Calcular nuevo ID
                 double nuevoId;
-                using (var cmdMax = new SqlCommand("SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.articulos", conn))
+                using (var cmdMax = new SqlCommand("SELECT ISNULL(MAX(id), 0) + 1 FROM dbo.articulos", conexionGlobal))
                     nuevoId = Convert.ToDouble(cmdMax.ExecuteScalar());
 
                 using var cmd = new SqlCommand(@"
                     INSERT INTO dbo.articulos (id, descripcion, codigo, modelo, estado, emision)
-                    VALUES (@id, @desc, @cod, @mod, 'A', GETDATE())", conn);
+                    VALUES (@id, @desc, @cod, @mod, 'A', GETDATE())", conexionGlobal);
                 cmd.Parameters.AddWithValue("@id", nuevoId);
                 cmd.Parameters.AddWithValue("@desc", descripcion);
                 cmd.Parameters.AddWithValue("@cod", codigo);
@@ -170,20 +166,23 @@ namespace WpfApp1
             if (string.IsNullOrEmpty(descripcion))
             {
                 MessageBox.Show("Ingresa la descripción.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                TxtNombre.Focus(); return;
+                TxtNombre.Focus(); 
+                return;
             }
 
             try
             {
-                using var conn = new SqlConnection(ConnectionString);
-                conn.Open();
+                if(conexionGlobal == null || conexionGlobal.State == ConnectionState.Closed)
+                {
+                    conexionGlobal = ConexionDB.AbrirConexion();
+                }
                 using var cmd = new SqlCommand(@"
                     UPDATE dbo.articulos
                     SET descripcion = @desc,
                         codigo      = @cod,
                         modelo      = @mod,
                         edicion     = GETDATE()
-                    WHERE id = @id", conn);
+                    WHERE id = @id", conexionGlobal);
                 cmd.Parameters.AddWithValue("@desc", descripcion);
                 cmd.Parameters.AddWithValue("@cod", codigo);
                 cmd.Parameters.AddWithValue("@mod", modelo);
@@ -215,9 +214,11 @@ namespace WpfApp1
 
             try
             {
-                using var conn = new SqlConnection(ConnectionString);
-                conn.Open();
-                using var cmd = new SqlCommand("DELETE FROM dbo.articulos WHERE id = @id", conn);
+                if(conexionGlobal == null || conexionGlobal.State == ConnectionState.Closed)
+                {
+                    conexionGlobal = ConexionDB.AbrirConexion();
+                }
+                using var cmd = new SqlCommand("DELETE FROM dbo.articulos WHERE id = @id", conexionGlobal);
                 cmd.Parameters.AddWithValue("@id", id);
                 cmd.ExecuteNonQuery();
             }
@@ -257,6 +258,10 @@ namespace WpfApp1
             TxtPrecio.Text = "";
             BtnGuardar.IsEnabled = false;
             _editandoId = -1;
+        }
+        private void MainWindow_Closed(object? sender, EventArgs e)
+        {
+            ConexionDB.CerrarConexion(conexionGlobal);
         }
     }
 }

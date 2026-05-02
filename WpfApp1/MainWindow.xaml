@@ -107,7 +107,7 @@
                 <DataGridTextColumn Header="Estado"      Binding="{Binding Estado}"      Width="80"/>
                 <DataGridTextColumn Header="Estado F"    Binding="{Binding Estadof}"     Width="80"/>
                 <DataGridTextColumn Header="Emisión"     Binding="{Binding Emision, StringFormat=\{0:dd/MM/yyyy\}}" Width="100"/>
-                <DataGridTemplateColumn Header="Acciones" Width="180">
+                <DataGridTemplateColumn Header="Acciones porno" Width="180">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
