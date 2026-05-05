@@ -67,28 +67,16 @@ namespace TuProyecto.Data
             Sql.TraspasosObj.Actualizar();
         }
 
-        // ─── INICIO DE LA APLICACIÓN ──────────────────────────────────────────
 
-        /// <summary>
-        /// Equivalente a iniciarLibro().
-        /// En WPF este método se llama desde App.xaml.cs → OnStartup.
-        /// La navegación (mostrar ventanas) debe hacerse desde el ViewModel o App.xaml.cs,
-        /// por eso este método devuelve un enum con la acción a tomar.
-        /// </summary>
-        public static async Task<AccionInicio> IniciarAsync()
-        {
-            bool hayConexion = DatabaseConnection.ConexionEstaActiva();
-            if (!hayConexion)
-                return AccionInicio.SinConexion;
 
-            if (SesionActiva)
-                return AccionInicio.MostrarPrincipal;
 
-            // Primera vez: cargar catálogos
-            AppLoader.SucursalActiva = SucursalActiva.ToString();
-            await Task.Run(() => AppLoader.ConectarProductos());
-            return AccionInicio.MostrarLogin;
-        }
+
+
+
+
+
+
+
 
         // ─── ACTUALIZAR BASE (cálculo de apertura y periodo) ─────────────────
 

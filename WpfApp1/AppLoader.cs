@@ -10,7 +10,7 @@ namespace TuProyecto.Data
     public static class AppLoader
     {
         // Variable global de sucursal activa (equivalente a sucursalActiva en VBA)
-        public static string SucursalActiva { get; set; } = "";
+        //public static string SucursalActiva { get; set; } = "";
 
         // ─── Referencia corta al contenedor ──────────────────────────────────
         private static SqlData Sql => SqlData.Instance;
@@ -68,7 +68,7 @@ namespace TuProyecto.Data
         /// </summary>
         public static void ConectarBases()
         {
-            string suc = SucursalActiva;
+            long suc = AppState.SucursalActiva;
 
             Sql.DocumentosIObj.Conectar("documentosI",
                 $"SELECT * FROM documentosI " +
@@ -89,7 +89,7 @@ namespace TuProyecto.Data
         /// </summary>
         public static void ConectarDocumentos(DateTime apertura, DateTime cierre)
         {
-            string suc  = SucursalActiva;
+            long suc = AppState.SucursalActiva;
             string aper = apertura.ToString("yyyyMMdd HH:mm:ss");
             string cier = cierre.ToString("yyyyMMdd HH:mm:ss");
 
